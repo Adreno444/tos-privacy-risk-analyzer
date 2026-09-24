@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { AnalysisReport } from '@/types/analyzer';
 import { SAMPLE_POLICIES } from '@/data/samplePolicies';
 import { AnalysisResults } from '@/components/AnalysisResults';
+import { PdfDropzone } from '@/components/PdfDropzone';
+import { ScanHistoryModal } from '@/components/ScanHistoryModal';
 import {
   ShieldAlert,
   FileText,
@@ -15,18 +17,22 @@ import {
   Lock,
   Zap,
   BookOpen,
+  UploadCloud,
+  History,
 } from 'lucide-react';
 
 export default function Home() {
-  const [tab, setTab] = useState<'url' | 'paste' | 'samples'>('url');
+  const [tab, setTab] = useState<'url' | 'pdf' | 'paste' | 'samples'>('url');
   const [urlInput, setUrlInput] = useState('');
   const [textInput, setTextInput] = useState('');
   const [docNameInput, setDocNameInput] = useState('');
+  const [activeRawText, setActiveRawText] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<AnalysisReport | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const handleAnalyzeText = async (textToAnalyze: string, name: string) => {
     if (!textToAnalyze || textToAnalyze.trim().length < 50) {
@@ -36,7 +42,8 @@ export default function Home() {
 
     setError(null);
     setLoading(true);
-    setLoadingStep('Analyzing legal clauses and privacy risks...');
+    setLoadingStep('Analyzing legal clauses and calculating risk scores...');
+    setActiveRawText(textToAnalyze);
 
     try {
       const res = await fetch('/api/analyze', {
@@ -84,6 +91,7 @@ export default function Home() {
         throw new Error(scrapeData.error || 'Failed to fetch the URL.');
       }
 
+      setActiveRawText(scrapeData.text);
       setLoadingStep('Auditing extracted clauses and scoring risks...');
 
       const analyzeRes = await fetch('/api/analyze', {
@@ -109,6 +117,11 @@ export default function Home() {
     }
   };
 
+  const handlePdfExtracted = (extractedText: string, fileName: string) => {
+    setDocNameInput(fileName);
+    handleAnalyzeText(extractedText, fileName);
+  };
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white pb-24">
       {/* Background Gradients */}
@@ -131,6 +144,16 @@ export default function Home() {
                 </span>
               </h1>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              <History className="w-4 h-4 text-indigo-400" />
+              <span>Past Audits</span>
+            </button>
           </div>
         </div>
       </header>
@@ -160,10 +183,10 @@ export default function Home() {
             {/* Input Card */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-6">
               {/* Tab Selector */}
-              <div className="flex p-1 bg-slate-950 rounded-xl border border-slate-800 max-w-md mx-auto">
+              <div className="flex p-1 bg-slate-950 rounded-xl border border-slate-800 max-w-xl mx-auto">
                 <button
                   onClick={() => setTab('url')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${
                     tab === 'url' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -171,8 +194,17 @@ export default function Home() {
                   Website URL
                 </button>
                 <button
+                  onClick={() => setTab('pdf')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${
+                    tab === 'pdf' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  Upload PDF
+                </button>
+                <button
                   onClick={() => setTab('paste')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${
                     tab === 'paste' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -181,7 +213,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => setTab('samples')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${
                     tab === 'samples' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -224,7 +256,7 @@ export default function Home() {
                   <button
                     onClick={handleAnalyzeUrl}
                     disabled={loading}
-                    className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
                   >
                     {loading ? (
                       <>
@@ -241,7 +273,14 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Tab 2: Paste Raw Text */}
+              {/* Tab 2: PDF Drag and Drop */}
+              {tab === 'pdf' && (
+                <div>
+                  <PdfDropzone onPdfExtracted={handlePdfExtracted} />
+                </div>
+              )}
+
+              {/* Tab 3: Paste Raw Text */}
               {tab === 'paste' && (
                 <div className="space-y-4 max-w-2xl mx-auto">
                   <div>
@@ -276,7 +315,7 @@ export default function Home() {
                   <button
                     onClick={() => handleAnalyzeText(textInput, docNameInput)}
                     disabled={loading}
-                    className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
                   >
                     {loading ? (
                       <>
@@ -293,7 +332,7 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Tab 3: Sample Demo Policies */}
+              {/* Tab 4: Sample Demo Policies */}
               {tab === 'samples' && (
                 <div className="space-y-4 max-w-2xl mx-auto">
                   <p className="text-xs text-slate-400 text-center">
@@ -370,9 +409,25 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <AnalysisResults report={report} onReset={() => setReport(null)} />
+          <AnalysisResults
+            report={report}
+            rawText={activeRawText}
+            onReset={() => {
+              setReport(null);
+              setActiveRawText('');
+            }}
+          />
         )}
       </div>
+
+      {/* History Modal */}
+      <ScanHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        onSelectReport={(selectedReport) => {
+          setReport(selectedReport);
+        }}
+      />
     </main>
   );
 }

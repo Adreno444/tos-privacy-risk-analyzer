@@ -1,18 +1,38 @@
-import React, { useState } from 'react';
-import { AnalysisReport, Category, RiskLevel } from '@/types/analyzer';
+import React, { useState, useEffect } from 'react';
+import { AnalysisReport } from '@/types/analyzer';
 import { GradeBadge } from './GradeBadge';
 import { RiskMeter } from './RiskMeter';
 import { RedFlagCard } from './RedFlagCard';
-import { ShieldCheck, AlertOctagon, CheckCircle2, Clock, FileText, Download, Share2, Filter } from 'lucide-react';
+import { PolicyChatDrawer } from './PolicyChatDrawer';
+import { saveScanToHistory } from '@/lib/history';
+import {
+  ShieldCheck,
+  AlertOctagon,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Download,
+  Filter,
+  MessageSquare,
+  Sparkles,
+} from 'lucide-react';
 
 interface AnalysisResultsProps {
   report: AnalysisReport;
+  rawText?: string;
   onReset: () => void;
 }
 
-export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onReset }) => {
+export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, rawText = '', onReset }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedRisk, setSelectedRisk] = useState<string>('ALL');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  useEffect(() => {
+    if (report) {
+      saveScanToHistory(report);
+    }
+  }, [report]);
 
   const filteredFlags = report.redFlags.filter((flag) => {
     const matchesCat = selectedCategory === 'ALL' || flag.category === selectedCategory;
@@ -24,7 +44,10 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onRese
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(report, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `${report.documentName.toLowerCase().replace(/\s+/g, '_')}_privacy_audit.json`);
+    downloadAnchor.setAttribute(
+      'download',
+      `${report.documentName.toLowerCase().replace(/\s+/g, '_')}_privacy_audit.json`
+    );
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -37,7 +60,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onRese
       {/* Top Header Card */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-xl relative overflow-hidden shadow-2xl">
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        
+
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 pb-6 border-b border-slate-800">
           <div>
             <div className="flex items-center gap-2.5 text-xs uppercase font-bold tracking-widest text-indigo-400 mb-2">
@@ -61,7 +84,16 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onRese
             </div>
           </div>
 
-          <div className="flex items-center gap-4 self-end sm:self-auto">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Ask AI About Policy</span>
+              <Sparkles className="w-3 h-3 text-amber-300" />
+            </button>
+
             <button
               onClick={downloadReport}
               className="flex items-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
@@ -69,11 +101,12 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onRese
               <Download className="w-4 h-4" />
               Export JSON
             </button>
+
             <button
               onClick={onReset}
-              className="text-xs font-semibold px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all"
+              className="text-xs font-semibold px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
             >
-              Analyze Another Document
+              New Scan
             </button>
           </div>
         </div>
@@ -81,7 +114,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onRese
         {/* Grade and Risk Gauges */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-6 items-center">
           <div className="md:col-span-4 flex flex-col items-center justify-center p-6 bg-slate-950/60 rounded-2xl border border-slate-800 text-center">
-            <span className="text-xs uppercase font-semibold text-slate-400 mb-3 tracking-wider">Privacy & Rights Grade</span>
+            <span className="text-xs uppercase font-semibold text-slate-400 mb-3 tracking-wider">
+              Privacy & Rights Grade
+            </span>
             <GradeBadge grade={report.overallGrade} size="xl" />
             <p className="text-xs text-slate-400 mt-3 font-medium max-w-[200px]">
               {report.overallGrade === 'A' || report.overallGrade === 'A+'
@@ -96,22 +131,30 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onRese
 
           <div className="md:col-span-8 space-y-4">
             <RiskMeter score={report.overallRiskScore} />
-            
+
             <div className="grid grid-cols-4 gap-2 text-center">
               <div className="bg-rose-950/30 border border-rose-500/20 p-2.5 rounded-xl">
-                <div className="text-lg sm:text-xl font-bold font-mono text-rose-400">{report.riskCounts.critical}</div>
+                <div className="text-lg sm:text-xl font-bold font-mono text-rose-400">
+                  {report.riskCounts?.critical || 0}
+                </div>
                 <div className="text-[10px] uppercase font-bold text-rose-500/90 tracking-wider">Critical</div>
               </div>
               <div className="bg-orange-950/30 border border-orange-500/20 p-2.5 rounded-xl">
-                <div className="text-lg sm:text-xl font-bold font-mono text-orange-400">{report.riskCounts.high}</div>
+                <div className="text-lg sm:text-xl font-bold font-mono text-orange-400">
+                  {report.riskCounts?.high || 0}
+                </div>
                 <div className="text-[10px] uppercase font-bold text-orange-500/90 tracking-wider">High</div>
               </div>
               <div className="bg-amber-950/30 border border-amber-500/20 p-2.5 rounded-xl">
-                <div className="text-lg sm:text-xl font-bold font-mono text-amber-400">{report.riskCounts.medium}</div>
+                <div className="text-lg sm:text-xl font-bold font-mono text-amber-400">
+                  {report.riskCounts?.medium || 0}
+                </div>
                 <div className="text-[10px] uppercase font-bold text-amber-500/90 tracking-wider">Medium</div>
               </div>
               <div className="bg-blue-950/30 border border-blue-500/20 p-2.5 rounded-xl">
-                <div className="text-lg sm:text-xl font-bold font-mono text-blue-400">{report.riskCounts.low}</div>
+                <div className="text-lg sm:text-xl font-bold font-mono text-blue-400">
+                  {report.riskCounts?.low || 0}
+                </div>
                 <div className="text-[10px] uppercase font-bold text-blue-500/90 tracking-wider">Low</div>
               </div>
             </div>
@@ -135,7 +178,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onRese
             Key Takeaways
           </h3>
           <ul className="space-y-2">
-            {report.keyTakeaways.map((item, idx) => (
+            {report.keyTakeaways?.map((item, idx) => (
               <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400 mt-2 shrink-0" />
                 <span>{item}</span>
@@ -155,7 +198,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onRese
                 {report.redFlags.length} Found
               </span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Click any clause to reveal verbatim document quote and actionable advice.</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Click any clause to reveal verbatim document quote and actionable advice.
+            </p>
           </div>
 
           {/* Filters */}
@@ -238,6 +283,14 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, onRese
           </div>
         </div>
       )}
+
+      {/* Interactive Policy Q&A Drawer */}
+      <PolicyChatDrawer
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        documentName={report.documentName}
+        documentText={rawText || report.executiveSummary}
+      />
     </div>
   );
 };
