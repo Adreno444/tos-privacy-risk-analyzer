@@ -182,9 +182,8 @@ export default function Home() {
                   Before Clicking "I Agree"
                 </span>
               </h2>
-              <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                Scan Terms of Service, Privacy Policies, and EULAs. Enter any link or domain—our crawler auto-discovers
-                and analyzes all connected legal policies to expose hidden surveillance, forced arbitration, and AI training.
+              <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
+                Scan Terms of Service, Privacy Policies, and EULAs. Enter any link, PDF, or text to instantly expose hidden risks.
               </p>
             </div>
 

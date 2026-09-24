@@ -19,7 +19,6 @@ import {
   UserX,
   Building2,
   ExternalLink,
-  BookMarked,
   Layers,
 } from 'lucide-react';
 
@@ -120,12 +119,6 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, rawTex
                   ~{report.readingTimeMinutes} min standard read
                 </span>
               )}
-              {report.readingGradeLevel && (
-                <span className="flex items-center gap-1 text-amber-300/90">
-                  <BookMarked className="w-3.5 h-3.5" />
-                  {report.readingGradeLevel}
-                </span>
-              )}
             </div>
           </div>
 
@@ -207,8 +200,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, rawTex
             </div>
 
             {/* Readability & Legal Complexity Metrics */}
-            {(report.legalComplexityRating || report.ambiguityRating || report.readingGradeLevel) && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+            {(report.legalComplexityRating || report.ambiguityRating) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                 <div className="bg-slate-950/50 border border-slate-800/80 p-2.5 rounded-xl">
                   <div className="text-[10px] uppercase font-semibold text-slate-400">Legal Complexity</div>
                   <div className="text-xs font-bold text-indigo-300 mt-0.5">
@@ -219,12 +212,6 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ report, rawTex
                   <div className="text-[10px] uppercase font-semibold text-slate-400">Ambiguity Score</div>
                   <div className="text-xs font-bold text-amber-300 mt-0.5">
                     {report.ambiguityRating || 'Moderate'}
-                  </div>
-                </div>
-                <div className="bg-slate-950/50 border border-slate-800/80 p-2.5 rounded-xl">
-                  <div className="text-[10px] uppercase font-semibold text-slate-400">Education Required</div>
-                  <div className="text-xs font-bold text-rose-300 mt-0.5 truncate">
-                    {report.readingGradeLevel || 'College Level'}
                   </div>
                 </div>
               </div>

@@ -51,7 +51,6 @@ export interface AnalysisReport {
   overallRiskScore: number; // 0 to 100 (100 is extreme risk)
   executiveSummary: string;
   keyTakeaways: string[];
-  readingGradeLevel: string; // e.g. "Postgraduate Law Level (Grade 16+)"
   legalComplexityRating: 'Extreme Obfuscation' | 'High Complexity' | 'Moderate Complexity' | 'Accessible & Clear';
   ambiguityRating: 'High Risk of Vague Terms' | 'Moderate' | 'Clear & Specific';
   riskCounts: {

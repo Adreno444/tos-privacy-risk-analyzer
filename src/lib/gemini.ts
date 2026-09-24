@@ -54,7 +54,7 @@ DETERMINISTIC SCORING RULES:
 
 You MUST extract:
 - Exact verbatim quotes for every discovered red flag.
-- Readability metrics (readingGradeLevel, legalComplexityRating, ambiguityRating).
+- Complexity metrics (legalComplexityRating, ambiguityRating).
 - A Rights Matrix: "Rights You Give Up / Waive" vs "Rights & Powers The Company Asserts".
 - Actionable Opt-Out Steps (e.g. arbitration opt-out address, email notice deadlines, cookie privacy settings).
 - Positive consumer-friendly protections.
@@ -67,7 +67,6 @@ Return strictly valid JSON matching this schema:
   "overallRiskScore": number,
   "executiveSummary": string,
   "keyTakeaways": [string, string, string, string],
-  "readingGradeLevel": string,
   "legalComplexityRating": "Extreme Obfuscation" | "High Complexity" | "Moderate Complexity" | "Accessible & Clear",
   "ambiguityRating": "High Risk of Vague Terms" | "Moderate" | "Clear & Specific",
   "riskCounts": {
