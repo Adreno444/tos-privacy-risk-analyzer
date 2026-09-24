@@ -6,11 +6,9 @@ import { SAMPLE_POLICIES } from '@/data/samplePolicies';
 import { AnalysisResults } from '@/components/AnalysisResults';
 import {
   ShieldAlert,
-  Search,
   FileText,
   Sparkles,
   Link2,
-  Key,
   AlertCircle,
   Loader2,
   ArrowRight,
@@ -24,8 +22,6 @@ export default function Home() {
   const [urlInput, setUrlInput] = useState('');
   const [textInput, setTextInput] = useState('');
   const [docNameInput, setDocNameInput] = useState('');
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [showApiModal, setShowApiModal] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
@@ -40,7 +36,7 @@ export default function Home() {
 
     setError(null);
     setLoading(true);
-    setLoadingStep('Analyzing legal clauses with Groq Llama 3.3 70B...');
+    setLoadingStep('Analyzing legal clauses and privacy risks...');
 
     try {
       const res = await fetch('/api/analyze', {
@@ -49,7 +45,6 @@ export default function Home() {
         body: JSON.stringify({
           text: textToAnalyze,
           documentName: name || 'Terms of Service / Privacy Document',
-          apiKey: apiKeyInput || undefined,
         }),
       });
 
@@ -75,7 +70,7 @@ export default function Home() {
 
     setError(null);
     setLoading(true);
-    setLoadingStep('Fetching & scraping policy content from URL...');
+    setLoadingStep('Fetching & extracting policy content from URL...');
 
     try {
       const scrapeRes = await fetch('/api/scrape', {
@@ -89,7 +84,7 @@ export default function Home() {
         throw new Error(scrapeData.error || 'Failed to fetch the URL.');
       }
 
-      setLoadingStep('Auditing extracted clauses with Groq Llama 3.3 70B...');
+      setLoadingStep('Auditing extracted clauses and scoring risks...');
 
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
@@ -97,7 +92,6 @@ export default function Home() {
         body: JSON.stringify({
           text: scrapeData.text,
           documentName: docNameInput || scrapeData.title || new URL(urlInput).hostname,
-          apiKey: apiKeyInput || undefined,
         }),
       });
 
@@ -133,20 +127,10 @@ export default function Home() {
               <h1 className="font-extrabold text-base sm:text-lg tracking-tight text-white flex items-center gap-2">
                 ToS & Privacy Risk Analyzer
                 <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
-                  Groq 70B
+                  AI Powered
                 </span>
               </h1>
             </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowApiModal(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-colors"
-            >
-              <Key className="w-3.5 h-3.5 text-amber-400" />
-              <span>{apiKeyInput ? 'Custom Key Set' : 'Groq API Key'}</span>
-            </button>
           </div>
         </div>
       </header>
@@ -159,7 +143,7 @@ export default function Home() {
             <div className="text-center space-y-4 max-w-3xl mx-auto">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
                 <Zap className="w-3.5 h-3.5" />
-                <span>Instant Red-Flag & Clause Audit Powered by Groq</span>
+                <span>Instant Legal & Privacy Red-Flag Audit</span>
               </div>
               <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
                 Know What You Agree To <br />
@@ -368,9 +352,9 @@ export default function Home() {
                 <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-3">
                   <Zap className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">Groq Ultra-Fast AI</h3>
+                <h3 className="text-sm font-bold text-white mb-1">Ultra-Fast AI Engine</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Extracts structured JSON reports in seconds using Llama 3.3 70B with 128k context support.
+                  Extracts structured risk reports and exact clause quotes in seconds using advanced LLM reasoning.
                 </p>
               </div>
 
@@ -389,37 +373,6 @@ export default function Home() {
           <AnalysisResults report={report} onReset={() => setReport(null)} />
         )}
       </div>
-
-      {/* Groq API Key Modal */}
-      {showApiModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center gap-2 text-amber-400">
-              <Key className="w-5 h-5" />
-              <h3 className="font-bold text-white text-base">Custom Groq API Key</h3>
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              If the server's default Groq API key is not configured, you can provide your own Groq API key (starts with <code className="bg-slate-800 px-1 py-0.5 rounded text-amber-300">gsk_</code>).
-              Get one for free at <a href="https://console.groq.com" target="_blank" rel="noreferrer" className="text-indigo-400 underline">console.groq.com</a>.
-            </p>
-            <input
-              type="password"
-              placeholder="gsk_..."
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono"
-            />
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setShowApiModal(false)}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition-colors"
-              >
-                Save & Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
