@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { analyzeLegalDocument } from '@/lib/groq';
+import { analyzeLegalDocumentWithGemini } from '@/lib/gemini';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,12 +13,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const report = await analyzeLegalDocument(text, documentName || 'Legal Document', apiKey);
+    const report = await analyzeLegalDocumentWithGemini(text, documentName || 'Legal Document', apiKey);
     return NextResponse.json(report);
   } catch (error: any) {
-    console.error('Analysis error:', error);
+    console.error('Gemini Analysis error:', error);
     return NextResponse.json(
-      { error: error.message || 'An error occurred during analysis.' },
+      { error: error.message || 'An error occurred during Gemini analysis.' },
       { status: 500 }
     );
   }
