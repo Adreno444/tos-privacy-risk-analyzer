@@ -21,18 +21,19 @@ export async function analyzeLegalDocumentWithGemini(
 
   const truncatedText = text.length > 300000 ? text.slice(0, 300000) + '\n\n[Document truncated]' : text;
 
-  const systemPrompt = `You are an elite legal-tech auditor, consumer rights defender, and cybersecurity/privacy analyst.
+  const systemPrompt = `You are the world's most thorough legal-tech auditor, consumer rights defender, and cybersecurity/privacy analyst.
 Your mission is to perform an exhaustive, unforgiving, and deeply objective analysis of Terms of Service (ToS), Privacy Policies, End User License Agreements (EULAs), and SaaS Contracts.
 
-Identify clauses related to:
-1. Data Selling, Monetization, Telemetry, and Third-Party Sharing (data brokers, ad networks).
-2. Forced Mandatory Arbitration, Class Action Waivers, and loss of Jury Trial rights.
-3. Intellectual Property Overreach (perpetual, irrevocable, royalty-free commercial licenses to user content).
-4. Unilateral Modification Rights (changing terms, pricing, or data practices at will without notice).
-5. Dark Patterns, Hidden Auto-Renewals, Buried Cancellation Fees, and billing traps.
-6. Broad Liability Disclaimers and Asymmetric Indemnification Clauses.
-7. Arbitrary Account Termination and Content Deletion without recourse.
-8. AI Training on User Data (using user data, prompts, or files to train proprietary AI/ML models).
+Audit specifically for these 9 major risk categories:
+1. "Data Selling & Tracking": Sharing personal info with data brokers, ad networks, cross-app tracking, device fingerprinting.
+2. "Forced Arbitration & Legal Waivers": Mandatory binding arbitration, jury trial waivers, class-action bans, short statute of limitations.
+3. "Intellectual Property Ownership": Broad, perpetual, irrevocable, royalty-free, transferable worldwide licenses to user content, AI derivatives, or forfeiture of user creations.
+4. "Unilateral Policy Changes": Company rights to alter terms, fees, or data practices at will without individual notice or opt-out.
+5. "Dark Patterns & Auto-Renewals": Hidden charges, recurring subscription traps, friction in cancellation, non-refundable billing.
+6. "Broad Liability & Indemnity": Asymmetric indemnity (user pays company legal fees), total liability disclaimers, "$0 or $50" max recovery caps.
+7. "Account Termination & Content Deletion": Company terminating access arbitrarily without notice, refund, or data export rights.
+8. "AI Training on User Data": Using user prompts, uploaded images, code, or personal data to train generative AI/LLM models without explicit opt-in.
+9. "Biometrics & Telemetry Surveillance": Collecting facial geometry, keystrokes, precise location, audio, or persistent hardware identifiers.
 
 DETERMINISTIC SCORING RULES:
 - Calculate overallRiskScore using this exact formula:
@@ -51,29 +52,51 @@ DETERMINISTIC SCORING RULES:
   * 61 - 75 -> "D"
   * 76 - 100 -> "F"
 
+You MUST extract:
+- Exact verbatim quotes for every discovered red flag.
+- Readability metrics (readingGradeLevel, legalComplexityRating, ambiguityRating).
+- A Rights Matrix: "Rights You Give Up / Waive" vs "Rights & Powers The Company Asserts".
+- Actionable Opt-Out Steps (e.g. arbitration opt-out address, email notice deadlines, cookie privacy settings).
+- Positive consumer-friendly protections.
+
 Return strictly valid JSON matching this schema:
 {
   "documentName": string,
-  "documentType": "Terms of Service" | "Privacy Policy" | "EULA" | "Other Legal Document",
+  "documentType": "Terms of Service" | "Privacy Policy" | "EULA" | "Comprehensive Legal Suite" | "Other Legal Document",
   "overallGrade": "A+" | "A" | "B" | "C" | "D" | "F",
   "overallRiskScore": number,
   "executiveSummary": string,
-  "keyTakeaways": [string, string, string],
+  "keyTakeaways": [string, string, string, string],
+  "readingGradeLevel": string,
+  "legalComplexityRating": "Extreme Obfuscation" | "High Complexity" | "Moderate Complexity" | "Accessible & Clear",
+  "ambiguityRating": "High Risk of Vague Terms" | "Moderate" | "Clear & Specific",
   "riskCounts": {
     "critical": number,
     "high": number,
     "medium": number,
     "low": number
   },
+  "rightsMatrix": {
+    "rightsYouGiveUp": [string, string, string],
+    "rightsCompanyClaims": [string, string, string]
+  },
+  "optOutActions": [
+    {
+      "title": string,
+      "action": string,
+      "deadlineOrMethod": string
+    }
+  ],
   "redFlags": [
     {
       "id": string,
-      "category": "Data Selling & Tracking" | "Forced Arbitration & Legal Waivers" | "Intellectual Property Ownership" | "Unilateral Policy Changes" | "Dark Patterns & Auto-Renewals" | "Broad Liability & Indemnity" | "Account Termination & Content Deletion" | "AI Training on User Data",
+      "category": "Data Selling & Tracking" | "Forced Arbitration & Legal Waivers" | "Intellectual Property Ownership" | "Unilateral Policy Changes" | "Dark Patterns & Auto-Renewals" | "Broad Liability & Indemnity" | "Account Termination & Content Deletion" | "AI Training on User Data" | "Biometrics & Telemetry Surveillance",
       "riskLevel": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
       "title": string,
       "plainSummary": string,
       "exactQuote": string,
-      "actionableAdvice": string
+      "actionableAdvice": string,
+      "sectionReference": string
     }
   ],
   "goodPractices": [
@@ -90,7 +113,7 @@ Return strictly valid JSON matching this schema:
 ${truncatedText}
 --- END OF DOCUMENT ---
 
-Provide your structured audit in the requested JSON format.`;
+Provide your comprehensive structured audit in the requested JSON format.`;
 
   // Dynamically query available models from Gemini API
   let activeModels: string[] = [];

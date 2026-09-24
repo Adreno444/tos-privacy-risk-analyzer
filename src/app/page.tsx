@@ -19,6 +19,7 @@ import {
   BookOpen,
   UploadCloud,
   History,
+  Compass,
 } from 'lucide-react';
 
 export default function Home() {
@@ -42,7 +43,7 @@ export default function Home() {
 
     setError(null);
     setLoading(true);
-    setLoadingStep('Analyzing legal clauses and calculating risk scores...');
+    setLoadingStep('Auditing legal clauses and calculating consumer risk scores...');
     setActiveRawText(textToAnalyze);
 
     try {
@@ -70,20 +71,21 @@ export default function Home() {
   };
 
   const handleAnalyzeUrl = async () => {
-    if (!urlInput || !urlInput.startsWith('http')) {
-      setError('Please enter a valid URL starting with http:// or https://');
+    const rawUrl = urlInput.trim();
+    if (!rawUrl) {
+      setError('Please enter a website link or policy URL (e.g. netflix.com, spotify.com, or https://example.com/terms)');
       return;
     }
 
     setError(null);
     setLoading(true);
-    setLoadingStep('Fetching & extracting policy content from URL...');
+    setLoadingStep('Discovering & extracting legal policies from website...');
 
     try {
       const scrapeRes = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: urlInput }),
+        body: JSON.stringify({ url: rawUrl }),
       });
 
       const scrapeData = await scrapeRes.json();
@@ -92,20 +94,25 @@ export default function Home() {
       }
 
       setActiveRawText(scrapeData.text);
-      setLoadingStep('Auditing extracted clauses and scoring risks...');
+      setLoadingStep('Deep scanning clauses, waivers, and privacy risks...');
 
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: scrapeData.text,
-          documentName: docNameInput || scrapeData.title || new URL(urlInput).hostname,
+          documentName: docNameInput || scrapeData.title || rawUrl,
         }),
       });
 
       const analyzeData = await analyzeRes.json();
       if (!analyzeRes.ok) {
         throw new Error(analyzeData.error || 'Failed to analyze legal text.');
+      }
+
+      // Attach discoveredPages to the report
+      if (scrapeData.discoveredPages && scrapeData.discoveredPages.length > 0) {
+        analyzeData.discoveredPages = scrapeData.discoveredPages;
       }
 
       setReport(analyzeData);
@@ -175,8 +182,8 @@ export default function Home() {
                 </span>
               </h2>
               <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                Scan Terms of Service, Privacy Policies, and EULAs. Automatically expose hidden surveillance,
-                mandatory arbitration, IP forfeitures, and auto-renewals with exact quotes.
+                Scan Terms of Service, Privacy Policies, and EULAs. Enter any link or domain—our crawler auto-discovers
+                and analyzes all connected legal policies to expose hidden surveillance, forced arbitration, and AI training.
               </p>
             </div>
 
@@ -191,7 +198,7 @@ export default function Home() {
                   }`}
                 >
                   <Link2 className="w-3.5 h-3.5" />
-                  Website URL
+                  Website / Link
                 </button>
                 <button
                   onClick={() => setTab('pdf')}
@@ -222,19 +229,27 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Tab 1: URL Input */}
+              {/* Tab 1: URL / Link Input */}
               {tab === 'url' && (
                 <div className="space-y-4 max-w-2xl mx-auto">
                   <div>
-                    <label className="block text-xs font-semibold uppercase text-slate-400 mb-2">
-                      Terms / Privacy Policy URL
+                    <label className="block text-xs font-semibold uppercase text-slate-400 mb-2 flex items-center justify-between">
+                      <span>Website Link or Terms/Privacy URL</span>
+                      <span className="text-[11px] text-indigo-400 font-normal flex items-center gap-1">
+                        <Compass className="w-3 h-3" /> Auto-discovers policy subpages
+                      </span>
                     </label>
                     <div className="relative">
                       <input
-                        type="url"
-                        placeholder="https://example.com/terms or https://service.com/privacy"
+                        type="text"
+                        placeholder="e.g. netflix.com, spotify.com/legal, or https://openai.com/policies/terms-of-use"
                         value={urlInput}
                         onChange={(e) => setUrlInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !loading) {
+                            handleAnalyzeUrl();
+                          }
+                        }}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
@@ -246,7 +261,7 @@ export default function Home() {
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Netflix, Spotify, Discord"
+                      placeholder="e.g. Netflix, Spotify, Discord, Reddit"
                       value={docNameInput}
                       onChange={(e) => setDocNameInput(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
@@ -266,7 +281,7 @@ export default function Home() {
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4" />
-                        <span>Analyze Live URL</span>
+                        <span>Scan Link & Legal Policies</span>
                       </>
                     )}
                   </button>
@@ -381,19 +396,19 @@ export default function Home() {
                 <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-3">
                   <ShieldAlert className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">Red-Flag Hunter</h3>
+                <h3 className="text-sm font-bold text-white mb-1">Deep Red-Flag Scanner</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Spots mandatory arbitration, waiver of jury trials, selling personal data, and perpetual copyright grants.
+                  Extracts AI model training on user data, mandatory arbitration, class-action waivers, and data broker sales.
                 </p>
               </div>
 
               <div className="bg-slate-900/40 border border-slate-800/80 p-5 rounded-2xl">
                 <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-3">
-                  <Zap className="w-5 h-5" />
+                  <Compass className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">Ultra-Fast AI Engine</h3>
+                <h3 className="text-sm font-bold text-white mb-1">Link & Domain Crawler</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Extracts structured risk reports and exact clause quotes in seconds using advanced LLM reasoning.
+                  Enter any domain or homepage link; our crawler automatically navigates and aggregates all legal policy pages.
                 </p>
               </div>
 
@@ -401,9 +416,9 @@ export default function Home() {
                 <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
                   <Lock className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">100% Client/Serverless</h3>
+                <h3 className="text-sm font-bold text-white mb-1">Rights Matrix & Opt-Outs</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Vercel native route handlers with zero tracking and privacy-preserving ephemeral audits.
+                  Generates an imbalance matrix comparing rights you forfeit vs rights the company asserts, with clear opt-out steps.
                 </p>
               </div>
             </div>
