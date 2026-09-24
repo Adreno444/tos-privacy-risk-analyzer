@@ -200,13 +200,13 @@ export default function Home() {
                 <Zap className="w-3.5 h-3.5" />
                 <span>Instant Legal & Privacy Red-Flag Audit</span>
               </div>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-                <span className="animate-hero-title">
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-normal sm:leading-snug pb-1">
+                <span className="animate-hero-title text-white">
                   <AnimatedLetters text="Know What You Agree To" baseDelay={0.05} />
                 </span>
                 <br />
-                <span className="animate-hero-gradient bg-gradient-to-r from-rose-400 via-indigo-300 to-emerald-400 bg-clip-text text-transparent">
-                  <AnimatedLetters text='Before Clicking "I Agree"' baseDelay={0.35} />
+                <span className="animate-hero-line2 text-white">
+                  <AnimatedLetters text='Before Clicking "I Agree"' baseDelay={0.3} />
                 </span>
               </h2>
               <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">

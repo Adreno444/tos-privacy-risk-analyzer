@@ -39,13 +39,15 @@ body {
   opacity: 0;
   animation: lineSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
   will-change: transform, opacity, filter;
+  padding-bottom: 6px;
 }
 
-.animate-hero-gradient {
+.animate-hero-line2 {
   display: inline-block;
   opacity: 0;
-  animation: lineSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  animation: lineSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s forwards;
   will-change: transform, opacity, filter;
+  padding-bottom: 6px;
 }
 
 .animate-char {
