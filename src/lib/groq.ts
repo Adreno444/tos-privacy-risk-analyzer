@@ -77,17 +77,44 @@ ${truncatedText}
 
 Provide your structured audit in the requested JSON format.`;
 
-  const fallbackModels = [
-    'llama-3.1-8b-instant',
-    'llama-3.3-70b-versatile',
-    'llama-3.1-70b-versatile',
-    'deepseek-r1-distill-llama-70b',
-  ];
+  // Dynamically query available models from Groq API
+  let availableModels: string[] = [];
+  try {
+    const modelList = await groq.models.list();
+    if (modelList && Array.isArray(modelList.data)) {
+      // Filter out audio transcription models (whisper) and inactive models
+      const textModels = modelList.data
+        .filter((m: any) => m.active !== false && !m.id.toLowerCase().includes('whisper'))
+        .map((m: any) => m.id);
+
+      // Sort models: prioritize 70b models, then 8b instant, then remaining
+      textModels.sort((a: string, b: string) => {
+        const score = (name: string) => {
+          const lower = name.toLowerCase();
+          if (lower.includes('70b')) return 100;
+          if (lower.includes('8b-instant') || lower.includes('llama-3.1-8b')) return 90;
+          if (lower.includes('deepseek')) return 80;
+          if (lower.includes('llama')) return 70;
+          return 50;
+        };
+        return score(b) - score(a);
+      });
+
+      availableModels = textModels;
+    }
+  } catch (err: any) {
+    console.warn('Dynamic model fetching failed, using fallback list:', err.message);
+  }
+
+  // If dynamic list is empty, use safe defaults
+  if (availableModels.length === 0) {
+    availableModels = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'llama-3.1-70b-versatile'];
+  }
 
   let completion: any = null;
   let lastError: any = null;
 
-  for (const modelName of fallbackModels) {
+  for (const modelName of availableModels) {
     try {
       completion = await groq.chat.completions.create({
         model: modelName,
@@ -103,12 +130,12 @@ Provide your structured audit in the requested JSON format.`;
       }
     } catch (err: any) {
       lastError = err;
-      console.warn(`Groq model ${modelName} failed or unavailable: ${err.message}. Trying next model...`);
+      console.warn(`Groq model ${modelName} returned error: ${err.message}. Trying next available model...`);
     }
   }
 
   if (!completion?.choices?.[0]?.message?.content) {
-    throw new Error(lastError?.message || 'Failed to complete analysis with available Groq models.');
+    throw new Error(lastError?.message || 'Failed to complete analysis with any active Groq model.');
   }
 
   const responseContent = completion.choices[0].message.content;
