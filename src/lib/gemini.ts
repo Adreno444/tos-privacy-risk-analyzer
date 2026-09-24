@@ -182,7 +182,14 @@ Provide your comprehensive structured audit in the requested JSON format.`;
     throw new Error(lastError?.message || 'Failed to analyze document with available Gemini AI models.');
   }
 
-  const parsedData = JSON.parse(responseText);
+  // Clean possible markdown code fences (e.g. ```json ... ```)
+  const cleanedJson = responseText
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+
+  const parsedData = JSON.parse(cleanedJson);
   return {
     ...parsedData,
     readingTimeMinutes,

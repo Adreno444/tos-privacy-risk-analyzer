@@ -49,6 +49,57 @@ const STANDARD_FALLBACK_PATHS = [
   '/legal/privacy-policy',
 ];
 
+function isProhibitedHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().trim();
+
+  // Localhost & Loopbacks
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host === '127.0.0.1' ||
+    host === '0.0.0.0' ||
+    host === '::1' ||
+    host === '[::1]'
+  ) {
+    return true;
+  }
+
+  // Cloud metadata services
+  if (
+    host === '169.254.169.254' ||
+    host.startsWith('169.254.') ||
+    host === 'metadata.google.internal' ||
+    host === 'metadata.internal' ||
+    host.endsWith('.internal') ||
+    host.endsWith('.local')
+  ) {
+    return true;
+  }
+
+  // RFC1918 Private IPv4 addresses
+  const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+  const match = host.match(ipv4Regex);
+  if (match) {
+    const oct1 = parseInt(match[1], 10);
+    const oct2 = parseInt(match[2], 10);
+
+    // 10.0.0.0/8
+    if (oct1 === 10) return true;
+    // 172.16.0.0/12
+    if (oct1 === 172 && oct2 >= 16 && oct2 <= 31) return true;
+    // 192.168.0.0/16
+    if (oct1 === 192 && oct2 === 168) return true;
+    // 127.0.0.0/8
+    if (oct1 === 127) return true;
+    // 0.0.0.0/8
+    if (oct1 === 0) return true;
+    // 169.254.0.0/16 (Link local)
+    if (oct1 === 169 && oct2 === 254) return true;
+  }
+
+  return false;
+}
+
 function normalizeUrl(inputUrl: string): string {
   let url = inputUrl.trim();
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -254,6 +305,14 @@ async function searchWebForPolicies(queryDomainOrName: string): Promise<{ result
 export async function scrapeLegalTextFromUrl(targetUrl: string): Promise<ScrapeResult> {
   const normalized = normalizeUrl(targetUrl);
   const parsedUrl = new URL(normalized);
+
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error('Only HTTP and HTTPS protocols are supported.');
+  }
+
+  if (isProhibitedHost(parsedUrl.hostname)) {
+    throw new Error('Access to private, localhost, or internal cloud metadata addresses is strictly prohibited.');
+  }
 
   // 1. Attempt Direct Fetch
   const initialFetch = await fetchDirect(normalized);
