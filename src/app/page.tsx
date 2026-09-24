@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { AnalysisReport } from '@/types/analyzer';
 import { SAMPLE_POLICIES } from '@/data/samplePolicies';
 import { AnalysisResults } from '@/components/AnalysisResults';
@@ -434,6 +435,36 @@ export default function Home() {
           />
         )}
       </div>
+
+      {/* Footer */}
+      <footer className="mt-20 border-t border-slate-800/80 pt-8 text-xs text-slate-400">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-300">ToS & Privacy Risk Analyzer</span>
+            <span>•</span>
+            <span className="text-emerald-400 font-medium flex items-center gap-1">
+              Zero-Log Ephemeral Audits
+            </span>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <Link href="/privacy" className="hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="hover:text-white transition-colors">
+              Terms of Service
+            </Link>
+            <a
+              href="https://github.com/Adreno444/tos-privacy-risk-analyzer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white transition-colors"
+            >
+              GitHub Repo
+            </a>
+          </div>
+        </div>
+      </footer>
 
       {/* History Modal */}
       <ScanHistoryModal

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "ToS and Privacy Risk Analyzer - AI Clause Audit",
-  description: "Scan Terms of Service, EULAs, and Privacy Policies to instantly detect predatory clauses, forced arbitration, data selling, and hidden traps using Groq AI.",
+  description: "Scan Terms of Service, EULAs, and Privacy Policies to instantly detect predatory clauses, forced arbitration, data selling, and hidden traps using Google Gemini AI.",
 };
 
 export default function RootLayout({
