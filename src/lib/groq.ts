@@ -32,9 +32,22 @@ Identify clauses related to:
 7. Arbitrary Account Termination and Content Deletion without recourse.
 8. AI Training on User Data (using user data, prompts, or files to train proprietary AI/ML models).
 
-Scoring Guidelines:
-- overallRiskScore: 0 to 100 integer (0 = Open/consumer-friendly, 50 = Standard commercial, 75-100 = Hostile/predatory).
-- overallGrade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F'.
+DETERMINISTIC SCORING RULES:
+- Calculate overallRiskScore using this exact formula:
+  * Each CRITICAL red flag = +25 points
+  * Each HIGH red flag = +15 points
+  * Each MEDIUM red flag = +8 points
+  * Each LOW red flag = +3 points
+  * Subtract 5 points for every significant consumer good practice found.
+  * Clamp final overallRiskScore strictly between 0 and 100.
+
+- Assign overallGrade based strictly on overallRiskScore:
+  * 0 - 15  -> "A+"
+  * 16 - 30 -> "A"
+  * 31 - 45 -> "B"
+  * 46 - 60 -> "C"
+  * 61 - 75 -> "D"
+  * 76 - 100 -> "F"
 
 Return strictly valid JSON matching this schema:
 {
@@ -77,44 +90,18 @@ ${truncatedText}
 
 Provide your structured audit in the requested JSON format.`;
 
-  // Dynamically query available models from Groq API
-  let availableModels: string[] = [];
-  try {
-    const modelList = await groq.models.list();
-    if (modelList && Array.isArray(modelList.data)) {
-      // Filter out audio transcription models (whisper) and inactive models
-      const textModels = modelList.data
-        .filter((m: any) => m.active !== false && !m.id.toLowerCase().includes('whisper'))
-        .map((m: any) => m.id);
-
-      // Sort models: prioritize 70b models, then 8b instant, then remaining
-      textModels.sort((a: string, b: string) => {
-        const score = (name: string) => {
-          const lower = name.toLowerCase();
-          if (lower.includes('70b')) return 100;
-          if (lower.includes('8b-instant') || lower.includes('llama-3.1-8b')) return 90;
-          if (lower.includes('deepseek')) return 80;
-          if (lower.includes('llama')) return 70;
-          return 50;
-        };
-        return score(b) - score(a);
-      });
-
-      availableModels = textModels;
-    }
-  } catch (err: any) {
-    console.warn('Dynamic model fetching failed, using fallback list:', err.message);
-  }
-
-  // If dynamic list is empty, use safe defaults
-  if (availableModels.length === 0) {
-    availableModels = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'llama-3.1-70b-versatile'];
-  }
+  // Use stable, consistent primary model first for determinism
+  const preferredModels = [
+    'llama-3.1-8b-instant',
+    'llama-3.3-70b-versatile',
+    'llama-3.1-70b-versatile',
+    'deepseek-r1-distill-llama-70b',
+  ];
 
   let completion: any = null;
   let lastError: any = null;
 
-  for (const modelName of availableModels) {
+  for (const modelName of preferredModels) {
     try {
       completion = await groq.chat.completions.create({
         model: modelName,
@@ -122,7 +109,8 @@ Provide your structured audit in the requested JSON format.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 0.1,
+        temperature: 0.0, // Zero temperature for reproducible, deterministic outputs
+        seed: 42,         // Seed for consistent sampling
         response_format: { type: 'json_object' },
       });
       if (completion?.choices?.[0]?.message?.content) {
@@ -130,12 +118,12 @@ Provide your structured audit in the requested JSON format.`;
       }
     } catch (err: any) {
       lastError = err;
-      console.warn(`Groq model ${modelName} returned error: ${err.message}. Trying next available model...`);
+      console.warn(`Groq model ${modelName} returned error: ${err.message}. Trying fallback model...`);
     }
   }
 
   if (!completion?.choices?.[0]?.message?.content) {
-    throw new Error(lastError?.message || 'Failed to complete analysis with any active Groq model.');
+    throw new Error(lastError?.message || 'Failed to complete analysis with available Groq models.');
   }
 
   const responseContent = completion.choices[0].message.content;
