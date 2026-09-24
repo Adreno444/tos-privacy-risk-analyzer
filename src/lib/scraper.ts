@@ -21,6 +21,7 @@ const LEGAL_KEYWORDS = [
   'terms-of-use',
   'user-agreement',
   'conditions-of-use',
+  'conditions',
   'privacy',
   'privacy-policy',
   'data-policy',
@@ -42,6 +43,8 @@ const STANDARD_FALLBACK_PATHS = [
   '/terms-of-service',
   '/privacy-policy',
   '/privacy-notice',
+  '/terms-condition',
+  '/terms-and-conditions',
   '/legal/terms-of-service',
   '/legal/privacy-policy',
 ];
@@ -55,10 +58,8 @@ function normalizeUrl(inputUrl: string): string {
 }
 
 function cleanHtmlToText($: cheerio.CheerioAPI): string {
-  // Remove noise elements
   $('script, style, noscript, nav, header, footer, iframe, svg, form, button, link, aside, .cookie-banner, .advertisement, #cookie-consent, [role="banner"], [role="navigation"]').remove();
 
-  // Focus on main content containers if found
   const contentElement = $('main, article, .content, .legal-content, .terms-content, .privacy-policy, .entry-content, #content, .container, .page-content, .main-content');
   let rawText = '';
   if (contentElement.length > 0) {
@@ -137,17 +138,15 @@ async function fetchViaJinaReader(url: string, timeoutMs: number = 12000): Promi
     const rawMarkdown = await response.text();
     if (!rawMarkdown || rawMarkdown.length < 100) return null;
 
-    // Extract title from markdown if available (e.g. Title: ...)
     let title = '';
     const titleMatch = rawMarkdown.match(/Title:\s*(.+)/i);
     if (titleMatch && titleMatch[1]) {
       title = titleMatch[1].trim();
     }
 
-    // Strip markdown links and clean text
     const cleaned = rawMarkdown
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url) -> text
-      .replace(/#{1,6}\s+/g, '') // remove header markers
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/#{1,6}\s+/g, '')
       .replace(/\r\n|\r/g, '\n')
       .replace(/\n\s*\n\s*\n+/g, '\n\n')
       .trim();
@@ -161,7 +160,7 @@ async function fetchViaJinaReader(url: string, timeoutMs: number = 12000): Promi
 
 function classifyLinkType(text: string, href: string): DiscoveredPage['type'] {
   const combined = `${text} ${href}`.toLowerCase();
-  if (combined.includes('terms') || combined.includes('tos') || combined.includes('user-agreement') || combined.includes('conditions')) return 'terms';
+  if (combined.includes('terms') || combined.includes('tos') || combined.includes('user-agreement') || combined.includes('condition')) return 'terms';
   if (combined.includes('privacy') || combined.includes('data-policy')) return 'privacy';
   if (combined.includes('eula') || combined.includes('license')) return 'eula';
   if (combined.includes('cookie')) return 'cookies';
@@ -177,6 +176,7 @@ function isLikelyLegalDocument(text: string): boolean {
     'privacy policy',
     'terms of service',
     'terms of use',
+    'terms and conditions',
     'arbitration',
     'indemnification',
     'limitation of liability',
@@ -194,6 +194,61 @@ function isLikelyLegalDocument(text: string): boolean {
     if (lower.includes(marker)) matches++;
   }
   return matches >= 2 && text.length > 500;
+}
+
+/**
+ * Autonomous Web Search Fallback: Searches DuckDuckGo for public policies when a site is blocked
+ */
+async function searchWebForPolicies(queryDomainOrName: string): Promise<{ results: { title: string; url: string; snippet: string }[] }> {
+  try {
+    const cleanDomain = queryDomainOrName.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const query = `${cleanDomain} terms of service privacy policy legal`;
+    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+
+    const response = await fetch(searchUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+
+    if (!response.ok) return { results: [] };
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const results: { title: string; url: string; snippet: string }[] = [];
+
+    $('.result__body').each((_, el) => {
+      const titleEl = $(el).find('.result__title a');
+      const snippetEl = $(el).find('.result__snippet');
+      if (titleEl.length > 0) {
+        const rawHref = titleEl.attr('href') || '';
+        const title = titleEl.text().trim();
+        const snippet = snippetEl.text().trim();
+
+        let actualUrl = rawHref;
+        if (rawHref.includes('uddg=')) {
+          try {
+            const urlObj = new URL(`https://html.duckduckgo.com${rawHref}`);
+            const uddg = urlObj.searchParams.get('uddg');
+            if (uddg) actualUrl = decodeURIComponent(uddg);
+          } catch {
+            actualUrl = rawHref;
+          }
+        }
+
+        if (actualUrl.startsWith('http')) {
+          results.push({ title, url: actualUrl, snippet });
+        }
+      }
+    });
+
+    return { results };
+  } catch (err: any) {
+    console.warn('DuckDuckGo search fallback failed:', err.message);
+    return { results: [] };
+  }
 }
 
 export async function scrapeLegalTextFromUrl(targetUrl: string): Promise<ScrapeResult> {
@@ -290,7 +345,6 @@ export async function scrapeLegalTextFromUrl(targetUrl: string): Promise<ScrapeR
 
     await Promise.all(
       targetsToFetch.map(async (doc) => {
-        // Try direct fetch first, fallback to Jina reader if blocked
         let docText = '';
         let docTitle = doc.title;
 
@@ -357,9 +411,9 @@ export async function scrapeLegalTextFromUrl(targetUrl: string): Promise<ScrapeR
     }
   }
 
-  // 4. If direct fetch completely failed or was blocked by Cloudflare/Anti-bot, use Jina Reader Fallback
+  // 4. Jina Reader Direct Fallback
   const jinaFallback = await fetchViaJinaReader(normalized);
-  if (jinaFallback && jinaFallback.text.length > 200) {
+  if (jinaFallback && jinaFallback.text.length > 300) {
     const wordCount = jinaFallback.text.split(/\s+/).filter(Boolean).length;
     const title = jinaFallback.title || parsedUrl.hostname;
     return {
@@ -375,7 +429,84 @@ export async function scrapeLegalTextFromUrl(targetUrl: string): Promise<ScrapeR
     };
   }
 
+  // 5. Autonomous Web Search Policy Discovery (When site blocks scrapers & Jina)
+  console.log(`Direct fetch and Jina reader blocked for ${normalized}. Triggering Autonomous Policy Search...`);
+  const searchResults = await searchWebForPolicies(parsedUrl.hostname);
+
+  if (searchResults.results.length > 0) {
+    const discoveredPages: DiscoveredPage[] = [];
+    const fetchedDocs: { title: string; url: string; text: string }[] = [];
+
+    // Filter results to high relevance legal policy pages
+    const legalResults = searchResults.results.filter((r) => {
+      const combined = `${r.title} ${r.url} ${r.snippet}`.toLowerCase();
+      return LEGAL_KEYWORDS.some((kw) => combined.includes(kw));
+    });
+
+    const topTargets = (legalResults.length > 0 ? legalResults : searchResults.results).slice(0, 3);
+
+    await Promise.all(
+      topTargets.map(async (item) => {
+        let docText = '';
+        let docTitle = item.title;
+
+        // Try direct fetch on discovered search URL
+        const fetched = await fetchDirect(item.url);
+        if (fetched) {
+          const doc$ = cheerio.load(fetched.html);
+          docText = cleanHtmlToText(doc$);
+          docTitle = item.title || doc$('title').text().trim() || item.url;
+        }
+
+        // Try Jina reader on discovered search URL
+        if (!docText || docText.length < 300) {
+          const jina = await fetchViaJinaReader(item.url);
+          if (jina && jina.text.length > 300) {
+            docText = jina.text;
+            docTitle = jina.title || docTitle;
+          }
+        }
+
+        // If page is still blocked by firewall, use the search snippet summary
+        if (!docText || docText.length < 100) {
+          if (item.snippet && item.snippet.length > 50) {
+            docText = `[Extracted Policy Summary from Public Web Search Index]\n${item.snippet}`;
+          }
+        }
+
+        if (docText) {
+          fetchedDocs.push({
+            title: docTitle,
+            url: item.url,
+            text: docText,
+          });
+          discoveredPages.push({
+            title: docTitle,
+            url: item.url,
+            type: classifyLinkType(docTitle, item.url),
+          });
+        }
+      })
+    );
+
+    if (fetchedDocs.length > 0) {
+      let aggregatedText = `=== AUTONOMOUS WEB SEARCH DISCOVERY FOR ${parsedUrl.hostname.toUpperCase()} ===\n`;
+      for (const doc of fetchedDocs) {
+        aggregatedText += `\n\n========================================\nDOCUMENT: ${doc.title.toUpperCase()}\nSOURCE: ${doc.url}\n========================================\n\n${doc.text}\n`;
+      }
+
+      const wordCount = aggregatedText.split(/\s+/).filter(Boolean).length;
+      return {
+        title: `${parsedUrl.hostname} Legal Policies (Web Search Discovery)`,
+        text: aggregatedText.trim(),
+        wordCount,
+        sourceUrl: normalized,
+        discoveredPages,
+      };
+    }
+  }
+
   throw new Error(
-    `Could not access or connect to ${normalized}. The website may be blocking automated web scrapers. Try copying and pasting the legal text into the 'Paste Text' tab.`
+    `Could not access ${normalized} directly or through search index. The website may be heavily geoblocked or behind advanced bot shields. Please copy and paste the legal text into the 'Paste Text' tab.`
   );
 }
