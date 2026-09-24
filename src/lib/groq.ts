@@ -77,20 +77,44 @@ ${truncatedText}
 
 Provide your structured audit in the requested JSON format.`;
 
-  const completion = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.1,
-    response_format: { type: 'json_object' },
-  });
+  const fallbackModels = [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'llama-3.1-70b-versatile',
+    'llama3-70b-8192',
+    'llama3-8b-8192',
+    'mixtral-8x7b-32768',
+    'gemma2-9b-it',
+  ];
 
-  const responseContent = completion.choices[0]?.message?.content;
-  if (!responseContent) {
-    throw new Error('No response received from Groq.');
+  let completion: any = null;
+  let lastError: any = null;
+
+  for (const modelName of fallbackModels) {
+    try {
+      completion = await groq.chat.completions.create({
+        model: modelName,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      });
+      if (completion?.choices?.[0]?.message?.content) {
+        break; // Success!
+      }
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`Groq model ${modelName} failed or unavailable: ${err.message}. Trying next model...`);
+    }
   }
+
+  if (!completion?.choices?.[0]?.message?.content) {
+    throw new Error(lastError?.message || 'Failed to complete analysis with available Groq models.');
+  }
+
+  const responseContent = completion.choices[0].message.content;
 
   const parsedData = JSON.parse(responseContent);
   return {
