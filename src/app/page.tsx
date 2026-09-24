@@ -25,28 +25,25 @@ import {
 
 const AnimatedLetters = ({
   text,
-  className = '',
   baseDelay = 0,
 }: {
   text: string;
-  className?: string;
   baseDelay?: number;
 }) => {
   return (
-    <span className={className}>
+    <>
       {text.split('').map((char, index) => (
         <span
           key={index}
-          className="animate-letter inline-block"
+          className="animate-char"
           style={{
-            animationDelay: `${baseDelay + index * 0.025}s`,
-            whiteSpace: char === ' ' ? 'pre' : 'normal',
+            animationDelay: `${baseDelay + index * 0.02}s`,
           }}
         >
           {char}
         </span>
       ))}
-    </span>
+    </>
   );
 };
 
@@ -204,10 +201,12 @@ export default function Home() {
                 <span>Instant Legal & Privacy Red-Flag Audit</span>
               </div>
               <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-                <AnimatedLetters text="Know What You Agree To" baseDelay={0.05} />
+                <span className="animate-hero-title">
+                  <AnimatedLetters text="Know What You Agree To" baseDelay={0.05} />
+                </span>
                 <br />
-                <span className="bg-gradient-to-r from-rose-400 via-indigo-300 to-emerald-400 bg-clip-text text-transparent">
-                  <AnimatedLetters text='Before Clicking "I Agree"' baseDelay={0.65} />
+                <span className="animate-hero-gradient bg-gradient-to-r from-rose-400 via-indigo-300 to-emerald-400 bg-clip-text text-transparent">
+                  <AnimatedLetters text='Before Clicking "I Agree"' baseDelay={0.35} />
                 </span>
               </h2>
               <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
