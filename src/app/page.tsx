@@ -23,6 +23,33 @@ import {
   Compass,
 } from 'lucide-react';
 
+const AnimatedLetters = ({
+  text,
+  className = '',
+  baseDelay = 0,
+}: {
+  text: string;
+  className?: string;
+  baseDelay?: number;
+}) => {
+  return (
+    <span className={className}>
+      {text.split('').map((char, index) => (
+        <span
+          key={index}
+          className="animate-letter inline-block"
+          style={{
+            animationDelay: `${baseDelay + index * 0.025}s`,
+            whiteSpace: char === ' ' ? 'pre' : 'normal',
+          }}
+        >
+          {char}
+        </span>
+      ))}
+    </span>
+  );
+};
+
 export default function Home() {
   const [tab, setTab] = useState<'url' | 'pdf' | 'paste' | 'samples'>('url');
   const [urlInput, setUrlInput] = useState('');
@@ -177,9 +204,10 @@ export default function Home() {
                 <span>Instant Legal & Privacy Red-Flag Audit</span>
               </div>
               <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-                Know What You Agree To <br />
+                <AnimatedLetters text="Know What You Agree To" baseDelay={0.05} />
+                <br />
                 <span className="bg-gradient-to-r from-rose-400 via-indigo-300 to-emerald-400 bg-clip-text text-transparent">
-                  Before Clicking "I Agree"
+                  <AnimatedLetters text='Before Clicking "I Agree"' baseDelay={0.65} />
                 </span>
               </h2>
               <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
