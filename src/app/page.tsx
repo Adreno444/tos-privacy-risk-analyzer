@@ -141,8 +141,8 @@ export default function Home() {
       <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-rose-600 to-indigo-600 text-white shadow-lg shadow-rose-500/20">
-              <ShieldAlert className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-600 via-indigo-600 to-indigo-500 text-white shadow-lg shadow-rose-500/20 flex items-center justify-center text-lg font-bold select-none border border-white/10">
+              𓍝
             </div>
             <div>
               <h1 className="font-extrabold text-base sm:text-lg tracking-tight text-white flex items-center gap-2">

@@ -20,10 +20,12 @@ export default function TermsOfServicePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link
             href="/"
-            className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Analyzer</span>
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-rose-600 to-indigo-600 text-white flex items-center justify-center text-sm font-bold select-none">
+              𓍝
+            </div>
+            <span className="font-bold text-white">ToS & Privacy Analyzer</span>
           </Link>
 
           <div className="flex items-center gap-2">
