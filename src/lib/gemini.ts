@@ -93,7 +93,7 @@ ${truncatedText}
 Provide your structured audit in the requested JSON format.`;
 
   // Try standard gemini models with fallback
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+  const modelsToTry = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
   let responseText: string | null = null;
   let lastError: any = null;
 

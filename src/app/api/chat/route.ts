@@ -50,17 +50,36 @@ INSTRUCTIONS:
       });
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        { role: 'user', parts: [{ text: systemInstruction + '\n\nUser question: ' + lastUserMessage }] },
-      ],
-      config: {
-        temperature: 0.2,
-      },
-    });
+    const modelsToTry = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    let reply: string | null = null;
+    let lastError: any = null;
 
-    const reply = response.text || 'I could not generate an answer based on this document.';
+    for (const modelName of modelsToTry) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: [
+            { role: 'user', parts: [{ text: systemInstruction + '\n\nUser question: ' + lastUserMessage }] },
+          ],
+          config: {
+            temperature: 0.2,
+          },
+        });
+
+        if (response.text) {
+          reply = response.text;
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`Gemini Chat model ${modelName} failed:`, err.message);
+      }
+    }
+
+    if (!reply) {
+      throw new Error(lastError?.message || 'I could not generate an answer based on this document.');
+    }
+
     return NextResponse.json({ reply });
   } catch (error: any) {
     console.error('Gemini Chat error:', error);
