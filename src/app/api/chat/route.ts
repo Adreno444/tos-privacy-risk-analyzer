@@ -41,20 +41,38 @@ INSTRUCTIONS:
 
     const lastUserMessage = messages[messages.length - 1]?.content || '';
 
-    // Format chat history
-    const contents: any[] = [];
-    for (const m of messages.slice(-6)) {
-      contents.push({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }],
+    // Dynamically query available models
+    let activeModels: string[] = [];
+    try {
+      const list = await ai.models.list();
+      for await (const m of list) {
+        const name = m.name?.replace(/^models\//, '') || '';
+        if (name && (name.includes('flash') || name.includes('pro') || name.includes('gemini'))) {
+          activeModels.push(name);
+        }
+      }
+      activeModels.sort((a, b) => {
+        const score = (n: string) => {
+          const lower = n.toLowerCase();
+          if (lower.includes('flash') && lower.includes('2.5')) return 100;
+          if (lower.includes('flash') && lower.includes('1.5')) return 90;
+          if (lower.includes('flash')) return 80;
+          return 50;
+        };
+        return score(b) - score(a);
       });
+    } catch {
+      activeModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro'];
     }
 
-    const modelsToTry = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    if (activeModels.length === 0) {
+      activeModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro'];
+    }
+
     let reply: string | null = null;
     let lastError: any = null;
 
-    for (const modelName of modelsToTry) {
+    for (const modelName of activeModels) {
       try {
         const response = await ai.models.generateContent({
           model: modelName,

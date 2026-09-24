@@ -92,12 +92,48 @@ ${truncatedText}
 
 Provide your structured audit in the requested JSON format.`;
 
-  // Try standard gemini models with fallback
-  const modelsToTry = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  // Dynamically query available models from Gemini API
+  let activeModels: string[] = [];
+  try {
+    const list = await ai.models.list();
+    for await (const m of list) {
+      const name = m.name?.replace(/^models\//, '') || '';
+      if (name && (name.includes('flash') || name.includes('pro') || name.includes('gemini'))) {
+        activeModels.push(name);
+      }
+    }
+
+    // Sort to prioritize flash models, then pro models
+    activeModels.sort((a, b) => {
+      const score = (n: string) => {
+        const lower = n.toLowerCase();
+        if (lower.includes('flash') && lower.includes('2.5')) return 100;
+        if (lower.includes('flash') && lower.includes('1.5')) return 90;
+        if (lower.includes('flash')) return 80;
+        if (lower.includes('pro')) return 70;
+        return 50;
+      };
+      return score(b) - score(a);
+    });
+  } catch (err: any) {
+    console.warn('Gemini models.list failed, using standard list:', err.message);
+  }
+
+  if (activeModels.length === 0) {
+    activeModels = [
+      'gemini-2.5-flash',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-flash-001',
+      'gemini-1.5-flash-002',
+      'gemini-pro',
+    ];
+  }
+
   let responseText: string | null = null;
   let lastError: any = null;
 
-  for (const modelName of modelsToTry) {
+  for (const modelName of activeModels) {
     try {
       const response = await ai.models.generateContent({
         model: modelName,
@@ -121,7 +157,7 @@ Provide your structured audit in the requested JSON format.`;
   }
 
   if (!responseText) {
-    throw new Error(lastError?.message || 'Failed to analyze document with Gemini AI.');
+    throw new Error(lastError?.message || 'Failed to analyze document with available Gemini AI models.');
   }
 
   const parsedData = JSON.parse(responseText);
