@@ -1,5 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
+﻿import { GoogleGenAI } from '@google/genai';
 import { AnalysisReport } from '@/types/analyzer';
+import { getCachedReport, setCachedReport } from '@/lib/cache';
 
 export async function analyzeLegalDocumentWithGemini(
   text: string,
@@ -12,6 +13,13 @@ export async function analyzeLegalDocumentWithGemini(
     throw new Error(
       'GEMINI_API_KEY is not configured. Please add GEMINI_API_KEY to your environment variables on Vercel or in your .env.local file.'
     );
+  }
+
+  // Check in-memory hash cache for instant deterministic replay
+  const cacheKey = `${docName}:::${text}`;
+  const cached = getCachedReport(cacheKey);
+  if (cached) {
+    return cached;
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -34,6 +42,12 @@ Audit specifically for these 9 major risk categories:
 7. "Account Termination & Content Deletion": Company terminating access arbitrarily without notice, refund, or data export rights.
 8. "AI Training on User Data": Using user prompts, uploaded images, code, or personal data to train generative AI/LLM models without explicit opt-in.
 9. "Biometrics & Telemetry Surveillance": Collecting facial geometry, keystrokes, precise location, audio, or persistent hardware identifiers.
+
+OBJECTIVE RISK LEVEL ANCHORS (Use these strict standards consistently):
+- CRITICAL: Selling/sharing PII or biometrics without opt-in; mandatory binding arbitration with total class action waivers; unilateral retroactive changes with no notice; total waiver of liability with full user indemnification.
+- HIGH: Using private user prompts/content to train AI/LLMs without opt-out; indefinite data retention after account deletion; cross-app telemetry profiling; auto-renewals with strict no-refund barriers.
+- MEDIUM: Standard analytics cookies; standard IP licenses limited strictly to operating the service; auto-renewals with advance email notification.
+- LOW: Routine maintenance logging; standard third-party infrastructure hosting disclosures; standard warranty disclaimers.
 
 DETERMINISTIC SCORING RULES:
 - Calculate overallRiskScore using this exact formula:
@@ -114,48 +128,18 @@ ${truncatedText}
 
 Provide your comprehensive structured audit in the requested JSON format.`;
 
-  // Dynamically query available models from Gemini API
-  let activeModels: string[] = [];
-  try {
-    const list = await ai.models.list();
-    for await (const m of list) {
-      const name = m.name?.replace(/^models\//, '') || '';
-      if (name && (name.includes('flash') || name.includes('pro') || name.includes('gemini'))) {
-        activeModels.push(name);
-      }
-    }
-
-    // Sort to prioritize flash models, then pro models
-    activeModels.sort((a, b) => {
-      const score = (n: string) => {
-        const lower = n.toLowerCase();
-        if (lower.includes('flash') && lower.includes('2.5')) return 100;
-        if (lower.includes('flash') && lower.includes('1.5')) return 90;
-        if (lower.includes('flash')) return 80;
-        if (lower.includes('pro')) return 70;
-        return 50;
-      };
-      return score(b) - score(a);
-    });
-  } catch (err: any) {
-    console.warn('Gemini models.list failed, using standard list:', err.message);
-  }
-
-  if (activeModels.length === 0) {
-    activeModels = [
-      'gemini-2.5-flash',
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-flash-001',
-      'gemini-1.5-flash-002',
-      'gemini-pro',
-    ];
-  }
+  // Pinned fast & deterministic model pipeline (Gemini 2.0 Flash -> 1.5 Flash -> 2.5 Flash)
+  const candidateModels = [
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-2.5-flash',
+    'gemini-1.5-pro'
+  ];
 
   let responseText: string | null = null;
   let lastError: any = null;
 
-  for (const modelName of activeModels) {
+  for (const modelName of candidateModels) {
     try {
       const response = await ai.models.generateContent({
         model: modelName,
@@ -165,6 +149,7 @@ Provide your comprehensive structured audit in the requested JSON format.`;
         config: {
           responseMimeType: 'application/json',
           temperature: 0.0,
+          seed: 42,
         },
       });
 
@@ -190,9 +175,14 @@ Provide your comprehensive structured audit in the requested JSON format.`;
     .trim();
 
   const parsedData = JSON.parse(cleanedJson);
-  return {
+  const finalReport: AnalysisReport = {
     ...parsedData,
     readingTimeMinutes,
     wordCount,
-  } as AnalysisReport;
+  };
+
+  // Cache report
+  setCachedReport(cacheKey, finalReport);
+
+  return finalReport;
 }

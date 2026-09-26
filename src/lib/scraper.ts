@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { getCachedScrape, setCachedScrape } from '@/lib/cache';
 
 export interface DiscoveredPage {
   title: string;
@@ -105,7 +106,21 @@ function normalizeUrl(inputUrl: string): string {
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     url = 'https://' + url;
   }
-  return url;
+  try {
+    const parsed = new URL(url);
+    // Strip common tracking and session parameters that cause cache misses
+    const paramsToDelete = [
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+      'ref', 'source', 'fbclid', 'gclid', 'msclkid', 'session_id', 'trk', '_hsenc'
+    ];
+    for (const p of paramsToDelete) {
+      parsed.searchParams.delete(p);
+    }
+    parsed.hash = ''; // Remove fragments
+    return parsed.toString();
+  } catch {
+    return url;
+  }
 }
 
 function cleanHtmlToText($: cheerio.CheerioAPI): string {
@@ -302,8 +317,7 @@ async function searchWebForPolicies(queryDomainOrName: string): Promise<{ result
   }
 }
 
-export async function scrapeLegalTextFromUrl(targetUrl: string): Promise<ScrapeResult> {
-  const normalized = normalizeUrl(targetUrl);
+async function doScrape(normalized: string): Promise<ScrapeResult> {
   const parsedUrl = new URL(normalized);
 
   if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
@@ -568,4 +582,18 @@ export async function scrapeLegalTextFromUrl(targetUrl: string): Promise<ScrapeR
   throw new Error(
     `Could not access ${normalized} directly or through search index. The website may be heavily geoblocked or behind advanced bot shields. Please copy and paste the legal text into the 'Paste Text' tab.`
   );
+}
+
+export async function scrapeLegalTextFromUrl(targetUrl: string): Promise<ScrapeResult> {
+  const normalized = normalizeUrl(targetUrl);
+
+  // Check cache for instant deterministic replay
+  const cached = getCachedScrape(normalized);
+  if (cached) {
+    return cached;
+  }
+
+  const result = await doScrape(normalized);
+  setCachedScrape(normalized, result);
+  return result;
 }
