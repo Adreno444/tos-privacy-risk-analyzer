@@ -154,17 +154,25 @@ export default function Home() {
       {/* Navigation Header */}
       <header className="border-b border-zinc-800/80 bg-[#09090b]/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-100 flex items-center justify-center text-sm font-bold select-none">
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = '/';
+            }}
+            className="flex items-center gap-2.5 cursor-pointer select-none group"
+            title="Refresh Analyzer"
+          >
+            <div className="w-7 h-7 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-100 flex items-center justify-center text-sm font-bold group-hover:border-zinc-600 transition-colors">
               𓍝
             </div>
-            <h1 className="font-semibold text-sm tracking-tight text-zinc-100 flex items-center gap-2">
+            <h1 className="font-semibold text-sm tracking-tight text-zinc-100 flex items-center gap-2 group-hover:text-white transition-colors">
               ToS & Privacy Analyzer
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
                 AI
               </span>
             </h1>
-          </div>
+          </a>
 
           <div className="flex items-center gap-2">
             <button
