@@ -52,9 +52,29 @@ export default function Home() {
 
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // Smooth simulated progress timer for analysis operations
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (loading) {
+      setProgress(12);
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev < 40) return prev + Math.floor(Math.random() * 8) + 4;
+          if (prev < 75) return prev + Math.floor(Math.random() * 5) + 2;
+          if (prev < 92) return prev + 1;
+          return prev;
+        });
+      }, 450);
+    } else {
+      setProgress(0);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const handleAnalyzeText = async (textToAnalyze: string, name: string) => {
     if (!textToAnalyze || textToAnalyze.trim().length < 50) {
@@ -64,6 +84,7 @@ export default function Home() {
 
     setError(null);
     setLoading(true);
+    setProgress(15);
     setLoadingStep('Auditing clauses & evaluating privacy risks...');
     setActiveRawText(textToAnalyze);
 
@@ -82,7 +103,10 @@ export default function Home() {
         throw new Error(data.error || 'Failed to analyze document.');
       }
 
-      setReport(data);
+      setProgress(100);
+      setTimeout(() => {
+        setReport(data);
+      }, 300);
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
     } finally {
@@ -100,6 +124,7 @@ export default function Home() {
 
     setError(null);
     setLoading(true);
+    setProgress(10);
     setLoadingStep('Extracting legal policies from domain...');
 
     try {
@@ -115,6 +140,7 @@ export default function Home() {
       }
 
       setActiveRawText(scrapeData.text);
+      setProgress(50);
       setLoadingStep('Analyzing clauses, waivers, and privacy risks...');
 
       const analyzeRes = await fetch('/api/analyze', {
@@ -135,7 +161,10 @@ export default function Home() {
         analyzeData.discoveredPages = scrapeData.discoveredPages;
       }
 
-      setReport(analyzeData);
+      setProgress(100);
+      setTimeout(() => {
+        setReport(analyzeData);
+      }, 300);
     } catch (err: any) {
       setError(err.message || 'Error occurred while processing.');
     } finally {
@@ -390,6 +419,38 @@ export default function Home() {
                         <ArrowRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 transition-colors shrink-0" />
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Analysis Progress Bar */}
+              {loading && (
+                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2.5 max-w-xl mx-auto transition-all animate-fadeIn">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-zinc-300 flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 text-zinc-400 animate-spin" />
+                      <span>{loadingStep || 'Analyzing legal terms...'}</span>
+                    </span>
+                    <span className="text-zinc-400 font-semibold">{Math.min(progress, 100)}%</span>
+                  </div>
+
+                  {/* Progress Track */}
+                  <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800/80">
+                    <div
+                      className="h-full bg-zinc-200 transition-all duration-300 ease-out rounded-full"
+                      style={{ width: `${Math.min(progress, 100)}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono pt-0.5">
+                    <span>
+                      {progress < 40
+                        ? '1/3 Document Ingestion'
+                        : progress < 80
+                        ? '2/3 Clause Auditing & Risk Scoring'
+                        : '3/3 Rights Matrix & Finalizing'}
+                    </span>
+                    <span>AI Reasoning</span>
                   </div>
                 </div>
               )}
